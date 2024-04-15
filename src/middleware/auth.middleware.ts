@@ -5,6 +5,8 @@ import { AppDataSource } from "../data-source";
 import { User } from "../entity/User.entity";
 import { UserDTO } from "../dto/user/user.dto";
 import { UserRole } from "../types/roles.type";
+import { ApplicationError } from "../shared/errors/application.error";
+import { AuthError } from "../shared/errors/types/auth.error.type";
 
 // TODO: Make reusable
 interface AuthRequest extends Request {
@@ -48,4 +50,29 @@ export const authorization = (roles: UserRole[]) => {
     }
     next();
   };
+};
+
+export const authenticationNew = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.send(401).json({ message: "Unauthorized" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.status(401).json({ message: "Unauthorized" });
+  }
+  const decode = jwt.verify(token, config.JWT.SECRET.KEY as string);
+  if (!decode) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.status(401).json({ message: "Unauthorized" });
+  }
+  req.user = decode as UserDTO;
+  console.log(req);
+  next();
 };
