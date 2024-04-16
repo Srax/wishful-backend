@@ -2,7 +2,7 @@ import app from "./app";
 import dotenv from "dotenv";
 import { AppDataSource } from "./data-source";
 import "reflect-metadata";
-import { User } from "./entity/User.entity";
+import { User } from "./entities/User.entity";
 
 dotenv.config();
 const PORT = process.env.PORT ?? 5000;

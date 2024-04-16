@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
-import { User } from "../entity/User.entity";
+import { User } from "../entities/User.entity";
 import { AppDataSource } from "../data-source";
-import { Encrypt } from "../helpers/encrypt";
+import { AuthHelper } from "../helpers/encrypt";
 import { UserDTO } from "../dto/user/user.dto";
 import * as cache from "memory-cache";
 
 import { sanitizeUser as sanitize } from "../utils/sanitizer";
 import { validate } from "class-validator";
-import { Role } from "../entity/Role.entity";
+import { Role } from "../entities/Role.entity";
 
 interface SignUpRequestBody {
   email: string;
@@ -25,7 +25,7 @@ export class UserController {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const encryptedPassword = await Encrypt.encrypt(password);
+    const encryptedPassword = await AuthHelper.encrypt(password);
     let user = new User(email, encryptedPassword, firstName, lastName);
     // TODO: Fix validation so it actually works
     // const validationErrors = await validate(user);
@@ -37,8 +37,8 @@ export class UserController {
     try {
       const userRepo = AppDataSource.getRepository(User);
       await userRepo.save(user);
-      const accessToken = Encrypt.generateAccessToken({ id: user.id });
-      const refreshToken = Encrypt.generateRefreshToken({ id: user.id });
+      const accessToken = AuthHelper.generateAccessToken({ id: user.id });
+      const refreshToken = AuthHelper.generateRefreshToken({ id: user.id });
       return res.status(201).json({
         message: "User created successfully",
         accessToken,

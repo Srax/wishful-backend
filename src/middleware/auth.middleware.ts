@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import * as jwt from "jsonwebtoken";
 import config from "../config/config";
 import { AppDataSource } from "../data-source";
-import { User } from "../entity/User.entity";
+import { User } from "../entities/User.entity";
 import { UserDTO } from "../dto/user/user.dto";
 import { UserRole } from "../types/roles.type";
 import { ApplicationError } from "../shared/errors/application.error";
@@ -35,8 +35,8 @@ export const authentication = (
 };
 
 export const authorization = (roles: UserRole[]) => {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const currentUser = req.currentUser; // Access currentUser directly from req object
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const currentUser = req.user; // Access currentUser directly from req object
     if (!currentUser) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -73,6 +73,5 @@ export const authenticationNew = (
     // return res.status(401).json({ message: "Unauthorized" });
   }
   req.user = decode as UserDTO;
-  console.log(req);
   next();
 };

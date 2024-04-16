@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
-import { User } from "../entity/User.entity";
-import { Encrypt } from "../helpers/encrypt";
+import { User } from "../entities/User.entity";
+import { AuthHelper } from "../helpers/encrypt";
 import { UserDTO } from "../dto/user/user.dto";
 import { UserController } from "./user.controller";
 import { sanitizeUser } from "../utils/sanitizer";

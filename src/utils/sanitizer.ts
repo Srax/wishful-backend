@@ -1,5 +1,5 @@
 import { UserDTO } from "../dto/user/user.dto";
-import { User } from "../entity/User.entity";
+import { User } from "../entities/User.entity";
 
 export const sanitizeUser = (user: User): UserDTO => {
   return {

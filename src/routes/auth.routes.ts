@@ -20,18 +20,12 @@ router.get("/", (req, res) => {
 
 router.post("/signup", AuthController.register);
 router.post("/login", AuthController.login);
-router.get(
+router.post("/refresh", AuthController.refreshToken);
+router.post(
   "/test",
   authenticationNew,
   asyncHandler((req, res, next) => {
-    res.status(200).json({ message: "Test" });
-  })
-);
-
-router.post(
-  "/test",
-  asyncHandler(async (req, res, next) => {
-    throw new ApplicationError(AuthError.BAD_REQUEST);
+    res.status(200).json({ message: "Test lol" });
   })
 );
 
