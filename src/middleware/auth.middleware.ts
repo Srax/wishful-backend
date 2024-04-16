@@ -13,26 +13,26 @@ interface AuthRequest extends Request {
   currentUser?: UserDTO; // Define currentUser property
 }
 
-export const authentication = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.send(401).json({ message: "Unauthorized" });
-  }
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  const decode = jwt.verify(token, config.JWT.SECRET.KEY as string);
-  if (!decode) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  req.currentUser = decode as UserDTO;
-  next();
-};
+// export const authentication = (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   const authHeader = req.headers.authorization;
+//   if (!authHeader) {
+//     return res.send(401).json({ message: "Unauthorized" });
+//   }
+//   const token = authHeader.split(" ")[1];
+//   if (!token) {
+//     return res.status(401).json({ message: "Unauthorized" });
+//   }
+//   const decode = jwt.verify(token, config.JWT.SECRET.KEY as string);
+//   if (!decode) {
+//     return res.status(401).json({ message: "Unauthorized" });
+//   }
+//   req.currentUser = decode as UserDTO;
+//   next();
+// };
 
 export const authorization = (roles: UserRole[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -52,7 +52,7 @@ export const authorization = (roles: UserRole[]) => {
   };
 };
 
-export const authenticationNew = (
+export const authentication = (
   req: Request,
   res: Response,
   next: NextFunction
@@ -68,6 +68,30 @@ export const authenticationNew = (
     // return res.status(401).json({ message: "Unauthorized" });
   }
   const decode = jwt.verify(token, config.JWT.SECRET.KEY as string);
+  if (!decode) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.status(401).json({ message: "Unauthorized" });
+  }
+  req.user = decode as UserDTO;
+  next();
+};
+
+export const verifyRefreshToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.send(401).json({ message: "Unauthorized" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+    // return res.status(401).json({ message: "Unauthorized" });
+  }
+  const decode = jwt.verify(token, config.JWT.REFRESH.KEY as string);
   if (!decode) {
     throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
     // return res.status(401).json({ message: "Unauthorized" });

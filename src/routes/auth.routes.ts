@@ -4,8 +4,8 @@ import { checkJwt } from "../middleware/auth.middleware.old";
 import { UserController } from "../controllers/user.controller";
 import {
   authentication,
-  authenticationNew,
   authorization,
+  verifyRefreshToken,
 } from "../middleware/auth.middleware";
 import { UserRole } from "../types/roles.type";
 import { AuthController } from "../controllers/auth.controller";
@@ -20,10 +20,10 @@ router.get("/", (req, res) => {
 
 router.post("/signup", AuthController.register);
 router.post("/login", AuthController.login);
-router.post("/refresh", AuthController.refreshToken);
+router.post("/refresh", verifyRefreshToken, AuthController.refreshToken);
 router.post(
   "/test",
-  authenticationNew,
+  authentication,
   asyncHandler((req, res, next) => {
     res.status(200).json({ message: "Test lol" });
   })

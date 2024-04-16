@@ -15,16 +15,16 @@ router.get(
   UserController.getAll
 );
 
-// router.get(
-//   "/profile",
-//   authentication,
-//   authorization([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
-//   AuthController.getProfile
-// );
+router.get(
+  "/profile",
+  authentication,
+  authorization([UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]),
+  AuthController.getProfile
+);
 
 router.post("/signup", UserController.create);
 router.post("/login", AuthController.login);
-router.post("/refresh", AuthController.login);
+router.post("/refresh", authentication, AuthController.login);
 
 router.put(
   "/update/:id",

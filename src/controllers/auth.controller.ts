@@ -12,15 +12,23 @@ import { AuthError } from "../shared/errors/types/auth.error.type";
 import { CommonError } from "../shared/errors/types/common.error.type";
 import { RefreshToken } from "../entities/refreshToken.entity";
 import config from "../config/config";
+import JWT from "jsonwebtoken";
 
 const NAMESPACE = "AUTH CONTROLLER";
 const userRepo = AppDataSource.getRepository(User);
 const refreshTokenRepo = AppDataSource.getRepository(RefreshToken);
 
-// TODO: Make reusable
-interface AuthRequest extends Request {
-  currentUser?: UserDTO; // Define currentUser property
-}
+const EXPIRE_TIME = 60 * 1000; // 20 sec
+
+const generateAccessAndRefreshTokens = async (userId: string) => {
+  const user = await userRepo.findOne({ where: { id: userId } });
+  if (!user) {
+    throw new ApplicationError(AuthError.NOT_FOUND);
+  }
+  const accessToken = AuthHelper.generateAccessToken({ id: user.id });
+  const refreshToken = AuthHelper.generateRefreshToken({ id: user.id });
+  return { accessToken, refreshToken };
+};
 
 // TODO: Add better error handling to every controller
 /**
@@ -43,30 +51,36 @@ export class AuthController {
         throw new ApplicationError(AuthError.CREDENTIALS_ERROR);
       }
 
-      /** Generate refresh and access token for user */
+      // // TODO : Redo this so tokens are stored in database
+      // /** Generate refresh and access token for user */
 
-      const accessToken = AuthHelper.generateAccessToken({ id: user.id });
-      if (!accessToken) {
-        throw new ApplicationError(CommonError.INTERNAL_SERVER_ERROR);
-      }
+      // const accessToken = AuthHelper.generateAccessToken({ id: user.id });
+      // if (!accessToken) {
+      //   throw new ApplicationError(CommonError.INTERNAL_SERVER_ERROR);
+      // }
 
-      // TODO: THE EXPIRY DATE SHOULD NOT BE HARD CODED!!!
-      const rfshTkn = AuthHelper.generateRefreshToken({ id: user.id });
-      const refreshToken = await refreshTokenRepo.save(
-        new RefreshToken(
-          rfshTkn,
-          user.id,
-          new Date(new Date(new Date().getTime() + 60 * 60 * 24 * 1000))
-        )
-      );
+      // // TODO: THE EXPIRY DATE SHOULD NOT BE HARD CODED!!!
+      // const rfshTkn = AuthHelper.generateRefreshToken({ id: user.id });
+      // const refreshToken = await refreshTokenRepo.save(
+      //   new RefreshToken(
+      //     rfshTkn,
+      //     user.id,
+      //     new Date(new Date(new Date().getTime() + 60 * 60 * 24 * 1000))
+      //   )
+      // );
 
-      if (!rfshTkn || !refreshToken) {
-        throw new ApplicationError(CommonError.INTERNAL_SERVER_ERROR);
-      }
+      // if (!rfshTkn || !refreshToken) {
+      //   throw new ApplicationError(CommonError.INTERNAL_SERVER_ERROR);
+      // }
+
+      const { refreshToken, accessToken } =
+        await generateAccessAndRefreshTokens(user.id);
 
       res
-        .cookie("refreshToken", refreshToken.token, {
-          expires: refreshToken.expiryDate,
+        .cookie("refreshToken", refreshToken, {
+          expires: new Date(
+            new Date(new Date().getTime() + 60 * 60 * 24 * 1000)
+          ),
         })
         .header("Authorization", accessToken)
         .status(200)
@@ -74,7 +88,11 @@ export class AuthController {
           message: "Authentication successful",
           user: sanitizeUser(user),
           success: true,
-          accessToken,
+          backendTokens: {
+            accessToken,
+            refreshToken,
+            expiresIn: new Date().setTime(new Date().getTime() + EXPIRE_TIME),
+          },
         });
     }
   );
@@ -87,12 +105,14 @@ export class AuthController {
     }
   );
 
+  // TODO : Fix access and refresh token for this register route
+
   public static readonly register = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const { email, firstName, lastName, password } = req.body;
 
       // TODO: Update to include firstname and lastname too
-      if (!email || firstName || lastName || password) {
+      if (!email || !password) {
         throw new ApplicationError(AuthError.BAD_REQUEST);
       }
 
@@ -102,44 +122,90 @@ export class AuthController {
       }
 
       const encryptedPassword = await AuthHelper.encrypt(password);
-      const _user = new User(email, encryptedPassword, firstName, lastName);
-      await userRepo.save(_user);
+      let tmp = new User(email, encryptedPassword, firstName, lastName);
+      const _user = await userRepo.save(tmp);
 
       // Generate token
-      const accessToken = AuthHelper.generateAccessToken(_user);
+      const accessToken = AuthHelper.generateAccessToken({ id: _user.id });
       res.status(200).json({
         message: "Registered successfully",
         user: _user,
-        accessToken,
+        backendTokens: {
+          accessToken,
+        },
       });
     }
   );
 
+  // // TODO: Think of a better way to do the refresh token... i dont think this is the way to go
+  // public static readonly refreshToken = asyncHandler(
+  //   async (req: Request, res: Response, next: NextFunction) => {
+  //     const { refreshToken } = req.cookies.refreshToken;
+  //     if (!refreshToken) {
+  //       throw new ApplicationError(AuthError.REQUIRED_REFRESH_TOKEN);
+  //     }
+
+  //     // Check if refresh token exists
+  //     const checkToken = await refreshTokenRepo.findOne({
+  //       where: { token: refreshToken },
+  //     });
+  //     if (!checkToken) {
+  //       throw new ApplicationError(AuthError.REQUIRED_REFRESH_TOKEN);
+  //     }
+  //     // TODO: This is really bad, it should be fixed
+  //     if (AuthHelper.verifyExpiration(checkToken)) {
+  //       await refreshTokenRepo.remove(checkToken);
+  //       throw new ApplicationError(AuthError.EXPIRED_TOKEN);
+  //     }
+
+  //     // If the refresh token exists and has been verified, generate a new access token
+  //     let newAccessToken = AuthHelper.generateAccessToken({
+  //       id: refreshToken.userId,
+  //     });
+  //     res.status(200).json({
+  //       accessToken: newAccessToken,
+  //       refreshToken: refreshToken.token,
+  //       expiresIn: new Date().setTime(new Date().getTime() + EXPIRE_TIME),
+  //     });
+  //   }
+  // );
   public static readonly refreshToken = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { refreshToken } = req.cookies;
-      if (!refreshToken) {
+      const incomingRefreshToken = req.headers.authorization;
+      console.log(incomingRefreshToken);
+      if (!incomingRefreshToken) {
         throw new ApplicationError(AuthError.REQUIRED_REFRESH_TOKEN);
       }
 
-      // Check if refresh token exists
-      const checkToken = await refreshTokenRepo.findOne({
-        where: { token: refreshToken },
-      });
-      if (!checkToken) {
-        throw new ApplicationError(AuthError.REQUIRED_REFRESH_TOKEN);
-      }
-      // TODO: This is really bad, it should be fixed
-      if (AuthHelper.verifyExpiration(checkToken)) {
-        await refreshTokenRepo.remove(checkToken);
-        throw new ApplicationError(AuthError.EXPIRED_TOKEN);
+      const user = req.user;
+      if (!user) {
+        throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
       }
 
-      // If the refresh token exists and has been verified, generate a new access token
-      let newAccessToken = AuthHelper.generateAccessToken({
-        id: refreshToken.userId,
+      const { refreshToken, accessToken } =
+        await generateAccessAndRefreshTokens(user.id);
+
+      res.status(200).json({
+        accessToken,
+        refreshToken,
+        expiresIn: new Date().setTime(new Date().getTime() + EXPIRE_TIME),
       });
-      res.status(200).json({ accessToken: newAccessToken });
+    }
+  );
+
+  public static readonly getProfile = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      if (!req.user) {
+        throw new ApplicationError(AuthError.FAILED_AUTHENTICATION);
+      }
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOne({
+        where: { id: req.user.id },
+      });
+      if (!user) {
+        throw new ApplicationError(AuthError.NOT_FOUND);
+      }
+      res.status(200).json(sanitizeUser(user));
     }
   );
 

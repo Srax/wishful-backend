@@ -88,7 +88,7 @@ export class User extends Base {
       });
       if (defaultRole) {
         this.role = defaultRole;
-        await this.save();
+        // await this.save();
       } else {
         throw new Error('Default role "USER" not found.');
       }

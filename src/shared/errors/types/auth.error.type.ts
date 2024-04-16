@@ -13,7 +13,7 @@ const AuthError = {
     type: ApplicationError.type.INVALID_DATA,
     code: "CREDENTIALS",
     message: "Invalid credentials",
-    statusCode: 403,
+    statusCode: 401,
   },
   NOT_FOUND: {
     name: "auth Error",
