@@ -36,7 +36,6 @@ export class AuthHelper {
    */
   static generateAccessToken(payload: payload) {
     const secret = config.JWT.SECRET.KEY; // Get JWT secret from config
-    console.log("Secret: " + secret);
     if (!secret || secret.length == 0) {
       throw new Error("JWT secret is not configured.");
     }
